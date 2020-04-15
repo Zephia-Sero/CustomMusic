@@ -2,129 +2,115 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using UnityEngine;
 using PiTung.Console;
 
 namespace CustomMusic {
-    public class BetterMusicPlayer : MonoBehaviour {
-        List<Track> playlist;
-        static GameObject boombox;
-        static GameObject player;
-        float secondsBetweenTracks = 200f;
-        int currentSongId = -1;
-        bool paused = false;
+    public class CommandPlay : Command {
+        public override string Name => "play";
+        public override string Usage => $"{Name} (#)";
+        public override string Description => "Forces a track to play. Leave # blank for random, use # to pick a track.";
 
-        public static BetterMusicPlayer CreateSelf() {
-            player=GameObject.Find("FirstPersonCharacter");
-            boombox=new GameObject();boombox.transform.SetParent(player.transform);
-            boombox.AddComponent<AudioSource>().spatialBlend=0.0f;
-            return player.AddComponent<BetterMusicPlayer>();
-        }
-        
-        void Start() {
-            boombox.GetComponent<AudioSource>().spatialBlend=0.0f;
-        }
-
-        public BetterMusicPlayer() {
-            playlist=new List<Track>();
-        }
-        public void AddNewTrack(string trackName, AudioClip ac) {
-            paused=false;
-            playlist.Add(new Track(trackName,ac));
-        }
-        public void SetTimeBetweenTracks(float newTime) {
-            secondsBetweenTracks=newTime;
-        }
-        public void Play(int songId) {
-            paused=false;
-            StopTrack();
-            playlist[songId].Play(boombox.GetComponent<AudioSource>());
-        }
-        public void PlayRandom() {
-            paused=false;
-            StopTrack();
-            int num = UnityEngine.Random.Range(0, playlist.Count());
-            playlist[num].Play(boombox.GetComponent<AudioSource>());
-            currentSongId=num;
-        }
-        private void SetCurrentSongId(int SongId) {
-            currentSongId=SongId;
-        }
-        public void BeginPlaylist() {
-            paused=false;
-            SetCurrentSongId(-1);
-            PlayNext();
-            StartCoroutine(Playlist_Normal());
-        }
-        public void BeginPlaylistAt(int start) {
-            paused=false;
-            SetCurrentSongId(start);
-            PlayNext();
-            StartCoroutine(Playlist_Normal());
-        }
-        public void BeginPlaylist_Shuffle() {
-            paused=false;
-            PlayRandom();
-            StartCoroutine(Playlist_Shuffle());
-        }
-        private IEnumerator<object> Playlist_Normal() {
-            yield return (object) new WaitForSecondsRealtime(secondsBetweenTracks);
-            PlayNext();
-            AudioSource audsrc = boombox.GetComponent<AudioSource>();
-            yield return (object) new WaitUntil(() => audsrc.time>=audsrc.clip.length);
-        }
-        private IEnumerator<object> Playlist_Shuffle() {
-            yield return (object) new WaitForSecondsRealtime(secondsBetweenTracks);
-            PlayRandom();
-            AudioSource audsrc = boombox.GetComponent<AudioSource>();
-            yield return (object) new WaitUntil(() => audsrc.time >= audsrc.clip.length);
-        }
-        public void PlayNext() {
-            paused=false;
-            currentSongId++;
-            if(currentSongId>=playlist.Count()) currentSongId=0;
-            Play(currentSongId);
-        }
-        public void PlayLast() {
-            paused=false;
-            currentSongId--;
-            if(currentSongId<0) currentSongId=playlist.Count()-1;
-            Play(currentSongId);
-        }
-        public void StopTrack() {
-            foreach(AudioSource a in GameObject.FindObjectsOfType<AudioSource>()) {
-                a.Stop();
+        public override bool Execute(IEnumerable<string> args) {
+            if(args.Count()==0)
+                CustomMusic.bmp.PlayRandom();
+            else {
+                int result;
+                if(int.TryParse(args.ElementAt(0), out result))
+                    CustomMusic.bmp.Play(result);
+                else return false;
             }
-        }
-        public string GetListOfSongs() {
-            string retVal = "";
-            for(int i = 0; i < playlist.Count(); i++) {
-                retVal+=i+": "+playlist[i].trackName+"\n";
-            }
-            return retVal;
-        }
-        public string GetCurrentSong() {
-            return currentSongId+": "+playlist[currentSongId].trackName;
-        }
-        public void TogglePause() {
-            paused=!paused;
-            if(paused) boombox.GetComponent<AudioSource>().Pause();
-            else boombox.GetComponent<AudioSource>().UnPause();
+                
+            return true;
         }
     }
-    class Track : MonoBehaviour {
-        public string trackName;
-        AudioClip ac;
-        public Track(string trackName, AudioClip ac) {
-            this.trackName=trackName;this.ac=ac;
+    public class CommandBeginPlaylist : Command {
+        public override string Name => "playlist";
+        public override string Usage => $"{Name} (random/#)";
+        public override string Description => "Starts playing tracks in series. Put random to shuffle the music, or a number to start at that track.";
+
+        public override bool Execute(IEnumerable<string> args) {
+            if(args.Count()==0)
+                CustomMusic.bmp.BeginPlaylist();
+            else if(args.ElementAt(0)=="random")
+                CustomMusic.bmp.BeginPlaylist_Shuffle();
+            else {
+                int result;
+                if(int.TryParse(args.ElementAt(0), out result))
+                    CustomMusic.bmp.BeginPlaylistAt(result);
+                else return false;
+            }
+            return true;
         }
-        public void Play(AudioSource audSrc) {
-            IGConsole.Log("Now playing... "+trackName);
-            audSrc.clip=ac;
-            audSrc.Play();
+    }
+    public class CommandStopPlaying : Command {
+        public override string Name => "stopmusic";
+        public override string Usage => $"{Name}";
+        public override string Description => "Forces all music to stop.";
+
+        public override bool Execute(IEnumerable<string> args) {
+            if(args.Count()==0)
+                CustomMusic.bmp.StopTrack();
+            else return false;
+            return true;
         }
-        public float GetTrackLength() {
-            return ac.length;
+    }
+    public class CommandViewTracks : Command {
+        public override string Name => "listtracks";
+        public override string Usage => $"{Name}";
+        public override string Description => "Lists all tracks and IDs.";
+
+        public override bool Execute(IEnumerable<string> args) {
+            if(args.Count()==0)
+                IGConsole.Log(CustomMusic.bmp.GetListOfSongs());
+            else return false;
+            return true;
+        }
+    }
+    public class CommandNextSong : Command {
+        public override string Name => "nextsong";
+        public override string Usage => $"{Name}";
+        public override string Description => "Skips to the next track.";
+
+        public override bool Execute(IEnumerable<string> args) {
+            if(args.Count()==0)
+                CustomMusic.bmp.PlayNext();
+            else return false;
+            return true;
+        }
+    }
+    public class CommandLastSong : Command {
+        public override string Name => "lastsong";
+        public override string Usage => $"{Name}";
+        public override string Description => "Goes back one track.";
+
+        public override bool Execute(IEnumerable<string> args) {
+            if(args.Count()==0)
+                CustomMusic.bmp.PlayLast();
+            else return false;
+            return true;
+        }
+    }
+    public class CommandCurrentSong : Command {
+        public override string Name => "whatsplaying";
+        public override string Usage => $"{Name}";
+        public override string Description => "View the track currently playing.";
+
+        public override bool Execute(IEnumerable<string> args) {
+            if(args.Count()==0)
+                IGConsole.Log(CustomMusic.bmp.GetCurrentSong());
+            else return false;
+            return true;
+        }
+    }
+    public class CommandPauseMusic : Command {
+        public override string Name => "togglepause";
+        public override string Usage => $"{Name}";
+        public override string Description => "Toggle the current track between paused/unpaused.";
+        public override bool Execute(IEnumerable<string> args) {
+            if(args.Count()==0)
+                CustomMusic.bmp.TogglePause();
+            else return false;
+            return true;
         }
     }
 }
