@@ -4,7 +4,7 @@ Allows you to add Custom Music to TUNG. Currently supports .ogg and .wav.<br />
 Commands added:<br />
 <b>/play</b><br />
 <i>\- Forces a random track to play.<br /></i>
-</b>/play SongID</b><br />
+<b>/play SongID</b><br />
 <i>\- Forces the track associated with the provided ID to play.<br /></i>
 <b>/playlist</b><br />
 <i>\- Starts playing music according to the order they were loaded (viewable with /listtracks)<br /></i>
