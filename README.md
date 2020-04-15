@@ -1,7 +1,7 @@
 # CustomMusic
 Allows you to add Custom Music to TUNG. Currently supports .ogg and .wav.<br />
 <br />
-Commands added:<br />
+Commands added by Custom Music:<br />
 <b>/lastsong</b><br />
 <i>\- Goes back to the last song.<br /></i>
 <b>/listtracks</b><br />
