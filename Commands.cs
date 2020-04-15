@@ -14,7 +14,7 @@ namespace CustomMusic {
         public override string Name => "Custom Music";
         public override string PackageName => "com.repsi0.custommusic";
         public override string Author => "Repsi0";
-        public override System.Version ModVersion => new System.Version("1.0.0");
+        public override System.Version ModVersion => new System.Version("1.0.5");
 
         public static BetterMusicPlayer bmp;
 
