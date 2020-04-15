@@ -1,116 +1,72 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using PiTung;
 using PiTung.Console;
+using System;
+using System.IO;
+using System.Linq;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Networking;
+
 
 namespace CustomMusic {
-    public class CommandPlay : Command {
-        public override string Name => "play";
-        public override string Usage => $"{Name} (#)";
-        public override string Description => "Forces music to play. Leave # blank for random, use # to pick a song.";
+    public class CustomMusic : Mod {
+        public override string Name => "Custom Music";
+        public override string PackageName => "com.repsi0.custommusic";
+        public override string Author => "Repsi0";
+        public override System.Version ModVersion => new System.Version("1.0.0");
 
-        public override bool Execute(IEnumerable<string> args) {
-            if(args.Count()==0)
-                CustomMusic.bmp.PlayRandom();
-            else {
-                int result;
-                if(int.TryParse(args.ElementAt(0), out result))
-                    CustomMusic.bmp.Play(result);
-                else return false;
+        public static BetterMusicPlayer bmp;
+
+        public override void OnWorldLoaded(string worldName) {
+
+            bmp=BetterMusicPlayer.CreateSelf();
+            MusicPlayer[] mps = GameObject.FindObjectsOfType<MusicPlayer>();
+
+            string musicDir = Directory.GetCurrentDirectory()+"\\music";
+            if(!Directory.Exists(musicDir)) {
+                Directory.CreateDirectory(musicDir);
             }
-                
-            return true;
-        }
-    }
-    public class CommandBeginPlaylist : Command {
-        public override string Name => "playlist";
-        public override string Usage => $"{Name} (random/#)";
-        public override string Description => "Starts playing music. Put random to shuffle the music, or a number to start at that track.";
 
-        public override bool Execute(IEnumerable<string> args) {
-            if(args.Count()==0)
-                CustomMusic.bmp.BeginPlaylist();
-            else if(args.ElementAt(0)=="random")
-                CustomMusic.bmp.BeginPlaylist_Shuffle();
-            else {
-                int result;
-                if(int.TryParse(args.ElementAt(0), out result))
-                    CustomMusic.bmp.BeginPlaylistAt(result);
-                else return false;
+            string[] musFiles = Directory.GetFiles(musicDir);
+            foreach(string path in Directory.GetFiles(musicDir)) {
+                string[] splitPath = path.Split('.');
+                string ext = splitPath[splitPath.Length-1].ToLower();
+                string[] availableExtensions = { "wav", "ogg" };
+                if(!availableExtensions.Contains(ext))
+                    IGConsole.Log("[Custom Music] "+ext+" file type not supported! Try using .WAV or .OGG instead!");
+                else {
+                    AudioType at = (ext=="ogg") ? AudioType.OGGVORBIS : ((ext=="mp3")?AudioType.MPEG :AudioType.WAV);
+                    UnityWebRequest uwr = UnityWebRequestMultimedia.GetAudioClip("file:///"+path, at);
+
+                    try {
+                        uwr.SendWebRequest();
+                        while(uwr.downloadProgress!=1.0f || !uwr.isDone) {
+                            //IGConsole.Log($"[Custom Music] File {path} downloaded: {100f*uwr.downloadProgress}%");
+                        }
+                        AudioClip ac=DownloadHandlerAudioClip.GetContent(uwr);
+
+                        string[] splitPath2 = path.Split('/');
+                        bmp.AddNewTrack(splitPath2[splitPath2.Length-1], ac);
+                    } catch(Exception e) {
+                        IGConsole.Log(e);
+                    }
+                }
             }
-            return true;
+            foreach(MusicPlayer mp in mps) mp.Tracks=new AudioClip[]{};
+            bmp.BeginPlaylist();
         }
-    }
-    public class CommandStopPlaying : Command {
-        public override string Name => "stopmusic";
-        public override string Usage => $"{Name}";
-        public override string Description => "Forces music to stop.";
 
-        public override bool Execute(IEnumerable<string> args) {
-            if(args.Count()==0)
-                CustomMusic.bmp.StopTrack();
-            else return false;
-            return true;
+        public override void BeforePatch() {
+            Shell.RegisterCommand<CommandPlay>();
+            Shell.RegisterCommand<CommandBeginPlaylist>();
+            Shell.RegisterCommand<CommandStopPlaying>();
+            Shell.RegisterCommand<CommandViewTracks>();
+            Shell.RegisterCommand<CommandNextSong>();
+            Shell.RegisterCommand<CommandLastSong>();
+            Shell.RegisterCommand<CommandCurrentSong>();
+            Shell.RegisterCommand<CommandPauseMusic>();
         }
     }
-    public class CommandViewTracks : Command {
-        public override string Name => "listtracks";
-        public override string Usage => $"{Name}";
-        public override string Description => "Lists all tracks and IDs.";
-
-        public override bool Execute(IEnumerable<string> args) {
-            if(args.Count()==0)
-                IGConsole.Log(CustomMusic.bmp.GetListOfSongs());
-            else return false;
-            return true;
-        }
-    }
-    public class CommandNextSong : Command {
-        public override string Name => "nextsong";
-        public override string Usage => $"{Name}";
-        public override string Description => "Skips to the next song.";
-
-        public override bool Execute(IEnumerable<string> args) {
-            if(args.Count()==0)
-                CustomMusic.bmp.PlayNext();
-            else return false;
-            return true;
-        }
-    }
-    public class CommandLastSong : Command {
-        public override string Name => "lastsong";
-        public override string Usage => $"{Name}";
-        public override string Description => "Goes back one song.";
-
-        public override bool Execute(IEnumerable<string> args) {
-            if(args.Count()==0)
-                CustomMusic.bmp.PlayLast();
-            else return false;
-            return true;
-        }
-    }
-    public class CommandCurrentSong : Command {
-        public override string Name => "whatsplaying";
-        public override string Usage => $"{Name}";
-        public override string Description => "View the song currently playing.";
-
-        public override bool Execute(IEnumerable<string> args) {
-            if(args.Count()==0)
-                IGConsole.Log(CustomMusic.bmp.GetCurrentSong());
-            else return false;
-            return true;
-        }
-    }
-    public class CommandPauseMusic : Command {
-        public override string Name => "togglepause";
-        public override string Usage => $"{Name}";
-        public override string Description => "Toggle the current track from paused/unpaused.";
-        public override bool Execute(IEnumerable<string> args) {
-            if(args.Count()==0)
-                CustomMusic.bmp.TogglePause();
-            else return false;
-            return true;
-        }
-    }
+    
 }
