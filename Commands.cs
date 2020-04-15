@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -86,6 +86,29 @@ namespace CustomMusic {
         public override bool Execute(IEnumerable<string> args) {
             if(args.Count()==0)
                 CustomMusic.bmp.PlayLast();
+            else return false;
+            return true;
+        }
+    }
+    public class CommandCurrentSong : Command {
+        public override string Name => "whatsplaying";
+        public override string Usage => $"{Name}";
+        public override string Description => "View the song currently playing.";
+
+        public override bool Execute(IEnumerable<string> args) {
+            if(args.Count()==0)
+                IGConsole.Log(CustomMusic.bmp.GetCurrentSong());
+            else return false;
+            return true;
+        }
+    }
+    public class CommandPauseMusic : Command {
+        public override string Name => "togglepause";
+        public override string Usage => $"{Name}";
+        public override string Description => "Toggle the current track from paused/unpaused.";
+        public override bool Execute(IEnumerable<string> args) {
+            if(args.Count()==0)
+                CustomMusic.bmp.TogglePause();
             else return false;
             return true;
         }
