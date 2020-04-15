@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,7 +11,8 @@ namespace CustomMusic {
         static GameObject boombox;
         static GameObject player;
         float secondsBetweenTracks = 200f;
-        int currentSongId = 0;
+        int currentSongId = -1;
+        bool paused = false;
 
         public static BetterMusicPlayer CreateSelf() {
             player=GameObject.Find("FirstPersonCharacter");
@@ -28,54 +29,67 @@ namespace CustomMusic {
             playlist=new List<Track>();
         }
         public void AddNewTrack(string trackName, AudioClip ac) {
+            paused=false;
             playlist.Add(new Track(trackName,ac));
         }
         public void SetTimeBetweenTracks(float newTime) {
             secondsBetweenTracks=newTime;
         }
         public void Play(int songId) {
+            paused=false;
             StopTrack();
             playlist[songId].Play(boombox.GetComponent<AudioSource>());
         }
         public void PlayRandom() {
+            paused=false;
             StopTrack();
             int num = UnityEngine.Random.Range(0, playlist.Count());
             playlist[num].Play(boombox.GetComponent<AudioSource>());
+            currentSongId=num;
         }
-        public void SetCurrentSongId(int SongId) {
+        private void SetCurrentSongId(int SongId) {
             currentSongId=SongId;
         }
         public void BeginPlaylist() {
-            SetCurrentSongId(0);
+            paused=false;
+            SetCurrentSongId(-1);
             PlayNext();
             StartCoroutine(Playlist_Normal());
         }
         public void BeginPlaylistAt(int start) {
+            paused=false;
             SetCurrentSongId(start);
             PlayNext();
             StartCoroutine(Playlist_Normal());
         }
         public void BeginPlaylist_Shuffle() {
+            paused=false;
             PlayRandom();
             StartCoroutine(Playlist_Shuffle());
         }
         private IEnumerator<object> Playlist_Normal() {
             yield return (object) new WaitForSecondsRealtime(secondsBetweenTracks);
             PlayNext();
-            yield return (object) new WaitForSecondsRealtime(playlist[currentSongId-1].GetTrackLength());
+            AudioSource audsrc = boombox.GetComponent<AudioSource>();
+            yield return (object) new WaitUntil(() => audsrc.time>=audsrc.clip.length);
         }
         private IEnumerator<object> Playlist_Shuffle() {
             yield return (object) new WaitForSecondsRealtime(secondsBetweenTracks);
-            PlayNext();
-            yield return (object) new WaitForSecondsRealtime(playlist[currentSongId-1].GetTrackLength());
+            PlayRandom();
+            AudioSource audsrc = boombox.GetComponent<AudioSource>();
+            yield return (object) new WaitUntil(() => audsrc.time >= audsrc.clip.length);
         }
         public void PlayNext() {
-            Play(currentSongId++);
-            currentSongId%=playlist.Count();
+            paused=false;
+            currentSongId++;
+            if(currentSongId>=playlist.Count()) currentSongId=0;
+            Play(currentSongId);
         }
         public void PlayLast() {
-            Play(--currentSongId);
+            paused=false;
+            currentSongId--;
             if(currentSongId<0) currentSongId=playlist.Count()-1;
+            Play(currentSongId);
         }
         public void StopTrack() {
             foreach(AudioSource a in GameObject.FindObjectsOfType<AudioSource>()) {
@@ -88,6 +102,14 @@ namespace CustomMusic {
                 retVal+=i+": "+playlist[i].trackName+"\n";
             }
             return retVal;
+        }
+        public string GetCurrentSong() {
+            return currentSongId+": "+playlist[currentSongId].trackName;
+        }
+        public void TogglePause() {
+            paused=!paused;
+            if(paused) boombox.GetComponent<AudioSource>().Pause();
+            else boombox.GetComponent<AudioSource>().UnPause();
         }
     }
     class Track : MonoBehaviour {
